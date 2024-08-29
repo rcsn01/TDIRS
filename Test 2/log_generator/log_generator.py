@@ -36,18 +36,61 @@ def generate_attack_traffic():
     attack = random.choice(attack_types)
 
     if attack == 'sql_injection':
-        payload = "' OR '1'='1"
+        sql_payloads = [
+            "' OR '1'='1",  # Classic SQL injection
+            "' UNION SELECT username, password FROM users --",  # Union-based SQL injection
+            "'; DROP TABLE users; --",  # SQL Drop injection
+        ]
+        payload = random.choice(sql_payloads)
         response = requests.get(f'http://web:5000/products?id={payload}')
         send_log(f"Attack traffic - SQL Injection attempt: {response.url}")
+
     elif attack == 'brute_force':
         for _ in range(5):  # Simulate 5 rapid login attempts
             data = {'username': 'admin', 'password': fake.password()}
             response = requests.post('http://web:5000/login', json=data)
-            send_log(f"Attack traffic - Brute force attempt: {data['username']}")
+            send_log(f"Attack traffic - Brute force attempt: {data['username']} with password {data['password']}")
+
     elif attack == 'xss':
-        payload = "<script>alert('XSS')</script>"
+        xss_payloads = [
+            "<script>alert('XSS')</script>",
+            '"><img src=x onerror=alert(1)>',  # Image tag-based XSS
+            "<svg/onload=alert(1)>",  # SVG-based XSS
+        ]
+        payload = random.choice(xss_payloads)
         response = requests.get(f'http://web:5000/products?search={payload}')
         send_log(f"Attack traffic - XSS attempt: {response.url}")
+
+    elif attack == 'ddos':
+        for _ in range(100):  # Simulate 100 requests in a short time
+            response = requests.get('http://web:5000/products')
+            send_log(f"Attack traffic - DDoS attempt: {response.url}")
+    
+    elif attack == 'path_traversal':
+        payload = "../../etc/passwd"  # Simulate accessing restricted file
+        response = requests.get(f'http://web:5000/files?file={payload}')
+        send_log(f"Attack traffic - Path traversal attempt: {response.url}")
+    
+    elif attack == 'directory_listing':
+        response = requests.get('http://web:5000/admin/')
+        send_log(f"Attack traffic - Directory listing attempt: {response.url}")
+    
+    elif attack == 'csrf':
+        fake_session_token = fake.sha256()  # Generate a fake session token
+        headers = {
+            'X-CSRF-Token': fake_session_token
+        }
+        response = requests.post('http://web:5000/profile', json={'name': fake.name()}, headers=headers)
+        send_log(f"Attack traffic - CSRF attempt with token: {fake_session_token}")
+    
+    elif attack == 'ldap_injection':
+        ldap_payloads = [
+            "admin*)(objectclass=*)",  # Basic LDAP Injection
+            "admin*|(&(objectclass=*))",  # LDAP Filter bypass
+        ]
+        payload = random.choice(ldap_payloads)
+        response = requests.get(f'http://web:5000/users?search={payload}')
+        send_log(f"Attack traffic - LDAP Injection attempt: {response.url}")
 
 
 if __name__ == '__main__':
